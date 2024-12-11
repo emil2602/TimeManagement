@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const userRouter = require('./routes/users.router');
+const taskRouter = require('./routes/tasks.router');
 const apiKeyMiddleware = require('./middlewares/api.middleware');
 const { launchBot } = require("./bot");
 const PORT = 3000;
@@ -9,6 +10,7 @@ const PORT = 3000;
 app.use(express.json());
 app.use(apiKeyMiddleware);
 app.use('/api/users', userRouter);
+app.use('/api/tasks', taskRouter)
 
 app.get("/", (req, res) => {
     res.send("Hello World!");

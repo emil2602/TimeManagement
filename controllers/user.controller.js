@@ -1,6 +1,6 @@
 const UserModel = require('../models').Users;
 const bcrypt = require('bcryptjs');
-const {where} = require("sequelize");
+const {where, Op} = require("sequelize");
 const {bot, sendLog} = require("../bot");
 
 exports.getAllUsers = async (req, res) => {
@@ -42,7 +42,7 @@ exports.createUser = async (req, res) => {
 
         const createdUser = await UserModel.create(user);
 
-        await sendLog(JSON.stringify(createdUser));
+        await sendLog(createdUser, {user: true, type: 'create'});
         res.status(201).send(createdUser)
 
     } catch (e) {
@@ -159,6 +159,79 @@ exports.changeIsActiveStatus = async (req, res) => {
         return res.status(200).json({
             message: `User ${isActive ? 'activated' : 'deactivated'} successfully.`,
         });
+
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+exports.searchUsers = async (req, res) => {
+    const {username, email, isActive, role, createdAfter, createdBefore} = req.query;
+
+    try {
+        const whereCondition = {}
+
+        if (username) {
+            whereCondition.username = { [Op.iLike]: `%${username}%` };
+        }
+
+        if (email) {
+            whereCondition.email = { [Op.iLike]: `%${email}%` };
+        }
+
+        if (isActive) {
+            whereCondition.isActive = isActive;
+        }
+
+        if ( role ) {
+            whereCondition.role = role;
+        }
+
+        if (createdAfter) {
+            whereCondition.createdAt = { ...(whereCondition.createdAt || {}), [Op.gte]: new Date(createdAfter) };
+        }
+        if (createdBefore) {
+            whereCondition.createdAt = { ...(whereCondition.createdAt || {}), [Op.lte]: new Date(createdBefore) };
+        }
+
+        const users = await UserModel.findAll({ where: whereCondition });
+
+        if (!users.length) {
+            return res.status(404).json({message: "Users not found"})
+        }
+
+        return res.status(200).json(users);
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+exports.changeUserPassword = async (req, res) => {
+    const {id} = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+        return res.status(400).json({ message: 'New password is required' });
+    }
+
+    try {
+        const user = await UserModel.findOne({ where: { id: id }});
+
+        if (!user) {
+            return res.status(400).json({message: "User not found"})
+        }
+
+        const isSamePassword  = await bcrypt.compare(newPassword, user?.password)
+
+        if (isSamePassword) {
+            return res.status(400).json({message: "New password cannot be the same"})
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 7);
+
+        await user.update({password: hashedPassword});
+
+        return res.status(200).json({ message: 'Password updated successfully' });
 
     } catch (e) {
         console.log(e)
