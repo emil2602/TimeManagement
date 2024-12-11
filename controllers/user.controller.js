@@ -17,6 +17,7 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
     try {
+        console.warn("Start creating user", req.body);
         const { username, email, password } = req.body;
 
         if (!username || !email || !password) {
@@ -45,7 +46,8 @@ exports.createUser = async (req, res) => {
         res.status(201).send(createdUser)
 
     } catch (e) {
-        console.log(e)
+        console.log("Error creating user", e);
+        res.status(500).json({message: 'Internal server error'})
     }
 }
 
